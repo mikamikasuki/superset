@@ -35,6 +35,7 @@ import {
 } from '@superset-ui/core';
 import { MetricsLayoutEnum, ShowValuesAsEnum } from '../types';
 import {
+  METRIC_DEFINITION_AGGREGATION,
   RESULT_AGGREGATIONS,
   RESULT_AGGREGATION_LABELS,
 } from './resultAggregation';
@@ -180,7 +181,7 @@ const config: ControlPanelConfig = {
               // The displayed value may be a result aggregation (Median,
               // Average, ...) rather than a plain total once `aggregateFunction`
               // is set below, so "summary" rather than "total".
-              label: () => t('Show row summaries'),
+              label: t('Show row summaries'),
               default: false,
               renderTrigger: true,
               description: t('Display row level total'),
@@ -204,7 +205,7 @@ const config: ControlPanelConfig = {
             name: 'colTotals',
             config: {
               type: 'CheckboxControl',
-              label: () => t('Show column summaries'),
+              label: t('Show column summaries'),
               default: false,
               renderTrigger: true,
               description: t('Display column level total'),
@@ -255,14 +256,14 @@ const config: ControlPanelConfig = {
             name: 'aggregateFunction',
             config: {
               type: 'SelectControl',
-              label: () => t('Aggregation function'),
-              default: 'Metric',
+              label: t('Aggregation function'),
+              default: METRIC_DEFINITION_AGGREGATION,
               clearable: false,
               // Not a renderTrigger: switching in or out of a result
               // aggregation changes whether the query uses GROUPING SETS at
               // all (see buildQuery.ts), so it needs a real requery.
               choices: [
-                ['Metric', t('Use metric definition')],
+                [METRIC_DEFINITION_AGGREGATION, t('Use metric definition')],
                 ...RESULT_AGGREGATIONS.map(
                   name =>
                     [name, RESULT_AGGREGATION_LABELS[name]] as [string, string],
@@ -307,7 +308,9 @@ const config: ControlPanelConfig = {
               // control's percent transform would otherwise be silently
               // ignored rather than applied on top of it.
               visibility: ({ controls }) =>
-                (controls?.aggregateFunction?.value ?? 'Metric') === 'Metric',
+                (controls?.aggregateFunction?.value ??
+                  METRIC_DEFINITION_AGGREGATION) ===
+                METRIC_DEFINITION_AGGREGATION,
             },
           },
         ],

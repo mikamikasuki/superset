@@ -30,6 +30,7 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from superset.tags.models import ObjectType, TagType
@@ -51,7 +52,7 @@ LEGACY_AGGREGATION_TAG = migration.LEGACY_AGGREGATION_TAG
 
 
 @pytest.fixture
-def engine():
+def engine() -> Engine:
     engine = create_engine("sqlite:///:memory:")
     migration.Base.metadata.create_all(engine)
     return engine
@@ -63,25 +64,27 @@ def engine():
 
 
 @pytest.mark.parametrize("value", sorted(_LEGACY_AGGREGATE_FUNCTIONS))
-def test_has_legacy_aggregate_function_true_for_every_recognized_value(value):
+def test_has_legacy_aggregate_function_true_for_every_recognized_value(
+    value: str,
+) -> None:
     slc = Slice(params=json.dumps({"viz_type": _VIZ_TYPE, _FIELD: value}))
     assert _has_legacy_aggregate_function(slc)
 
 
-def test_has_legacy_aggregate_function_false_for_unrecognized_value():
+def test_has_legacy_aggregate_function_false_for_unrecognized_value() -> None:
     params = json.dumps({"viz_type": _VIZ_TYPE, _FIELD: "Metric"})
     assert not _has_legacy_aggregate_function(Slice(params=params))
 
 
-def test_has_legacy_aggregate_function_false_when_field_absent():
+def test_has_legacy_aggregate_function_false_when_field_absent() -> None:
     params = json.dumps({"viz_type": _VIZ_TYPE, "colTotals": True})
     assert not _has_legacy_aggregate_function(Slice(params=params))
 
 
 @pytest.mark.parametrize("malformed_value", [[], {}, 1, None])
 def test_has_legacy_aggregate_function_false_when_field_not_a_string(
-    malformed_value,
-):
+    malformed_value: object,
+) -> None:
     """A malformed non-string aggregateFunction value (e.g. `[]`/`{}` from an
     unrelated historical bug) must be skipped, not raise -- `in` on a
     frozenset requires a hashable left operand, so an unguarded membership
@@ -91,19 +94,21 @@ def test_has_legacy_aggregate_function_false_when_field_not_a_string(
     assert not _has_legacy_aggregate_function(Slice(params=params))
 
 
-def test_has_legacy_aggregate_function_false_when_params_empty():
+def test_has_legacy_aggregate_function_false_when_params_empty() -> None:
     assert not _has_legacy_aggregate_function(Slice(params=None))
 
 
 @pytest.mark.parametrize("malformed_params", ["[]", "null", "1", '"a string"'])
-def test_has_legacy_aggregate_function_false_when_params_not_dict(malformed_params):
+def test_has_legacy_aggregate_function_false_when_params_not_dict(
+    malformed_params: str,
+) -> None:
     """A historically malformed non-dict params value must be skipped, not
     raise, so one bad row can't abort `superset db upgrade` partway through
     paginated_update's batches."""
     assert not _has_legacy_aggregate_function(Slice(params=malformed_params))
 
 
-def test_has_legacy_aggregate_function_false_on_invalid_json():
+def test_has_legacy_aggregate_function_false_on_invalid_json() -> None:
     assert not _has_legacy_aggregate_function(Slice(params="not-json"))
 
 
@@ -112,7 +117,7 @@ def test_has_legacy_aggregate_function_false_on_invalid_json():
 # ---------------------------------------------------------------------------
 
 
-def _run_upgrade(engine) -> None:
+def _run_upgrade(engine: Engine) -> None:
     # Simulate the Alembic transaction the same way the real migration runs:
     # bind the session to an explicit connection so paginated_update's
     # internal commits are visible once the outer transaction closes.
@@ -127,7 +132,9 @@ def _run_upgrade(engine) -> None:
             migration.upgrade()
 
 
-def test_upgrade_tags_and_invalidates_only_affected_pivot_tables(engine) -> None:
+def test_upgrade_tags_and_invalidates_only_affected_pivot_tables(
+    engine: Engine,
+) -> None:
     with Session(engine) as seed:
         seed.add_all(
             [
@@ -178,7 +185,7 @@ def test_upgrade_tags_and_invalidates_only_affected_pivot_tables(engine) -> None
         assert tagged_object_ids == {1}
 
 
-def test_upgrade_is_idempotent_across_repeated_runs(engine) -> None:
+def test_upgrade_is_idempotent_across_repeated_runs(engine: Engine) -> None:
     """A re-run (or a slice matching an already-created tag) must not violate
     the (tag_id, object_id, object_type) unique constraint, and must not
     create a second Tag row for the same name."""
@@ -207,7 +214,7 @@ def test_upgrade_is_idempotent_across_repeated_runs(engine) -> None:
         assert len(tagged) == 1
 
 
-def test_upgrade_populates_tag_audit_timestamps(engine) -> None:
+def test_upgrade_populates_tag_audit_timestamps(engine: Engine) -> None:
     """The tag API subtracts created_on/changed_on from now(); NULLs break it."""
     with Session(engine) as seed:
         seed.add(
@@ -231,7 +238,7 @@ def test_upgrade_populates_tag_audit_timestamps(engine) -> None:
 
 
 def test_downgrade_strips_default_metric_from_params_and_query_context(
-    engine,
+    engine: Engine,
 ) -> None:
     """Older code KeyErrors on a persisted ``aggregateFunction: "Metric"``, so
     downgrade removes it from both stored representations and leaves real

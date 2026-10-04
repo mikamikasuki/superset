@@ -54,6 +54,9 @@ export const RESULT_AGGREGATIONS = [
   'Count as Fraction of Columns',
 ] as const;
 
+/** Sentinel choice meaning "use the metric's own definition". */
+export const METRIC_DEFINITION_AGGREGATION = 'Metric';
+
 export type ResultAggregation = (typeof RESULT_AGGREGATIONS)[number];
 
 /**
